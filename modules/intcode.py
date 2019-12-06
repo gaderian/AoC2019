@@ -16,6 +16,10 @@ class IntcodeMachine:
                 2: self.multiplyCode,
                 3: self.inputCode,
                 4: self.outputCode,
+                5: self.jumpIfTrueCode,
+                6: self.jumpIfFalseCode,
+                7: self.lessThanCode,
+                8: self.equalsCode,
                 99: self.exitCode}
 
     def getParamModes(code, nrOfParams):
@@ -71,12 +75,57 @@ class IntcodeMachine:
         print(self.program[idx1])
         self.instPoint+=2
 
+    # 05
+    def jumpIfTrueCode(self):
+        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],2)
+        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
+        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
+
+        if self.program[idx1] != 0:
+             self.instPoint = self.program[idx2]
+        else:
+             self.instPoint+=3
+
+    # 06
+    def jumpIfFalseCode(self):
+        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],2)
+        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
+        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
+
+        if self.program[idx1] == 0:
+             self.instPoint = self.program[idx2]
+        else:
+             self.instPoint+=3
+
+    # 07
+    def lessThanCode(self):
+        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],3)
+        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
+        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
+
+        if modes[2] != 0:
+            raise ValueError('The mode for the destination was not 0')
+        destination = self.program[self.instPoint+3]
+
+        self.program[destination] = int(self.program[idx1] < self.program[idx2])
+        self.instPoint+=4
+
+    # 08
+    def equalsCode(self):
+        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],3)
+        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
+        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
+
+        if modes[2] != 0:
+            raise ValueError('The mode for the destination was not 0')
+        destination = self.program[self.instPoint+3]
+
+        self.program[destination] = int(self.program[idx1] == self.program[idx2])
+        self.instPoint+=4
+
     # 99
     def exitCode(self):
         return 0
-
-
-
 
     def step(self):
         try:
@@ -89,8 +138,7 @@ class IntcodeMachine:
             return -1
 
         return None
-            
-        
+
     def run(self):
         status = None
         while status == None:
