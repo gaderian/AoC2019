@@ -6,11 +6,13 @@ class IntcodeMachine:
     program = []
     instPoint = 0
     lastIndex = 0
+    relativeBase = 0
 
     def __init__(self, program):
         self.program = program
         self.instPoint = 0
-        self.lastIndex = len(program)
+        self.lastIndex = len(program)-1
+        relativeBase = 0
         self.instructions = { 
                 1: self.addCode,
                 2: self.multiplyCode,
@@ -20,108 +22,113 @@ class IntcodeMachine:
                 6: self.jumpIfFalseCode,
                 7: self.lessThanCode,
                 8: self.equalsCode,
+                9: self.changeBaseCode,
                 99: self.exitCode}
 
-    def getParamModes(code, nrOfParams):
-        modes=code//100
-        modeArray = [0]*nrOfParams
-        index=0
-        while modes > 0:
-            modeArray[index] = modes%10
+    def getParamIndices(self, nrOfParams: int, lastIsDestination: bool) -> list:
+        modes=self.program[self.instPoint]//100
+        indexArray = [-1]*nrOfParams
+        for i in range(0,nrOfParams-1):
+            mode = modes%10
             modes = modes//10
-            index+=1
-        return modeArray
+            if mode == 0:
+                indexArray[i] = self.program[self.instPoint + (i+1)]
+            elif mode == 1:
+                indexArray[i] = self.instPoint + (i+1)
+            elif mode == 2:
+                indexArray[i] = self.relativeBase + self.program[self.instPoint + (i+1)]
+
+        mode = modes%10
+        if lastIsDestination and mode == 1:
+            raise ValueError('Destination can not be of mode 1 ()')
+
+        if mode == 0:
+            indexArray[-1] = self.program[self.instPoint + nrOfParams]
+        elif mode == 1:
+            indexArray[-1] = self.instPoint + nrOfParams
+        elif mode == 2:
+            indexArray[-1] = self.relativeBase + self.program[self.instPoint + nrOfParams]
+
+        if max(indexArray) > self.lastIndex:
+            self.program = self.program + [0]*(max(indexArray)-self.lastIndex)
+            self.lastIndex = len(self.program)-1
+
+        return indexArray
 
     # 01
     def addCode(self):
-        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],3)
-        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
-        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
-
-        if modes[2] != 0:
-            raise ValueError('The mode for the destination was not 0')
-
-        destination = self.program[self.instPoint+3]
+        indices = self.getParamIndices(3,True)
+        idx1 = indices[0]
+        idx2 = indices[1]
+        destination = indices[2]
         self.program[destination] = self.program[idx1] + self.program[idx2]
         self.instPoint+=4
 
     # 02
     def multiplyCode(self):
-        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],3)
-        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
-        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
-
-        if modes[2] != 0:
-            raise ValueError('The mode for the destination was not 0')
-
-        destination = self.program[self.instPoint+3]
+        indices = self.getParamIndices(3,True)
+        idx1 = indices[0]
+        idx2 = indices[1]
+        destination = indices[2]
         self.program[destination] = self.program[idx1] * self.program[idx2]
         self.instPoint+=4
 
     # 03
     def inputCode(self):
-        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],1)
-        if modes[0] != 0:
-            raise ValueError('The mode for the destination was not 0')
-
+        indices = self.getParamIndices(1,True)
         value = int(sys.stdin.readline())
-        self.program[self.program[self.instPoint+1]] = value
+        self.program[indices[0]] = value
         self.instPoint+=2
 
     # 04
     def outputCode(self):
-        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],1)
-        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
-        print(self.program[idx1])
+        indices = self.getParamIndices(1,False)
+        print(self.program[indices[0]])
         self.instPoint+=2
 
     # 05
     def jumpIfTrueCode(self):
-        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],2)
-        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
-        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
+        indices = self.getParamIndices(2,False)
 
-        if self.program[idx1] != 0:
-             self.instPoint = self.program[idx2]
+        if self.program[indices[0]] != 0:
+             self.instPoint = self.program[indices[1]]
         else:
              self.instPoint+=3
 
     # 06
     def jumpIfFalseCode(self):
-        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],2)
-        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
-        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
+        indices = self.getParamIndices(2,False)
 
-        if self.program[idx1] == 0:
-             self.instPoint = self.program[idx2]
+        if self.program[indices[0]] == 0:
+             self.instPoint = self.program[indices[1]]
         else:
              self.instPoint+=3
 
     # 07
     def lessThanCode(self):
-        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],3)
-        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
-        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
-
-        if modes[2] != 0:
-            raise ValueError('The mode for the destination was not 0')
-        destination = self.program[self.instPoint+3]
-
+        indices = self.getParamIndices(3,True)
+        idx1 = indices[0]
+        idx2 = indices[1]
+        destination = indices[2]
         self.program[destination] = int(self.program[idx1] < self.program[idx2])
         self.instPoint+=4
 
     # 08
     def equalsCode(self):
-        modes = IntcodeMachine.getParamModes(self.program[self.instPoint],3)
-        idx1 = self.program[self.instPoint+1] if modes[0] == 0 else self.instPoint+1
-        idx2 = self.program[self.instPoint+2] if modes[1] == 0 else self.instPoint+2
-
-        if modes[2] != 0:
-            raise ValueError('The mode for the destination was not 0')
-        destination = self.program[self.instPoint+3]
-
+        indices = self.getParamIndices(3,True)
+        idx1 = indices[0]
+        idx2 = indices[1]
+        destination = indices[2]
         self.program[destination] = int(self.program[idx1] == self.program[idx2])
         self.instPoint+=4
+
+    # 09
+    def changeBaseCode(self):
+        indices = self.getParamIndices(1,False)
+        self.relativeBase += self.program[indices[0]]
+        if self.relativeBase < 0:
+            raise IndexError('Trying to set relative base to negative number')
+        self.instPoint+=2
 
     # 99
     def exitCode(self):
