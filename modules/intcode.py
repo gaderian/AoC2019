@@ -4,6 +4,7 @@ import sys
 class IntcodeMachine:
     instructions = {}
     program = []
+    input = []
     instPoint = 0
     lastIndex = 0
     relativeBase = 0
@@ -13,6 +14,7 @@ class IntcodeMachine:
         self.instPoint = 0
         self.lastIndex = len(program)-1
         relativeBase = 0
+        self.hasFinished = False
         self.instructions = { 
                 1: self.addCode,
                 2: self.multiplyCode,
@@ -76,15 +78,15 @@ class IntcodeMachine:
     # 03
     def inputCode(self):
         indices = self.getParamIndices(1,True)
-        value = int(sys.stdin.readline())
+        value = int(self.input.pop(0))
         self.program[indices[0]] = value
         self.instPoint+=2
 
     # 04
     def outputCode(self):
         indices = self.getParamIndices(1,False)
-        print(self.program[indices[0]])
         self.instPoint+=2
+        return self.program[indices[0]]
 
     # 05
     def jumpIfTrueCode(self):
@@ -132,23 +134,20 @@ class IntcodeMachine:
 
     # 99
     def exitCode(self):
-        return 0
+        self.hasFinished = True
 
     def step(self):
-        try:
-            operation = self.instructions[self.program[self.instPoint] % 100]
-            returnCode = operation()
-            if returnCode != None:
-                return returnCode
-        except KeyError as e:
-            repr(e)
-            return -1
+        operation = self.instructions[self.program[self.instPoint] % 100]
+        return operation()
 
-        return None
+    def setInput(self, input: []):
+        self.input = input
 
-    def run(self):
-        status = None
-        while status == None:
-            status = self.step()
+    def run(self) -> [int]:
+        result = []
+        while not self.hasFinished:
+            output = self.step()
+            if output != None:
+                result.append(output)
 
-        return status
+        return result

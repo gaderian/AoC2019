@@ -11,8 +11,10 @@ codes = [ int(c) for c in line.split(',') ]
 
 im = IntcodeMachine(codes)
 # im.run()
+myInput= [ int(c) for c in input('The input digits separated by comma\n').split(',') ]
+im.setInput(myInput)
 try:
-    im.run()
+    print(im.run())
 except Exception as e:
     print(im.program)
     print(im.instPoint)
