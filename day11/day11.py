@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from modules.intcode import IntcodeMachine
+from threading import Thread
 
 inputfile = "input.txt"
 results = []
@@ -10,8 +11,8 @@ with open(inputfile) as f:
 program = [ int(c) for c in line.split(',') ]
 
 brain = IntcodeMachine(program)
-inputArray = [1]
-brain.setInput(inputArray)
+inputQueue = brain.inputQueue
+outputQueue = brain.outputQueue
 position = (0,0)
 facing = 0
 whiteSquares = {position}
@@ -57,21 +58,21 @@ def walk(instruction):
 
     visited.add(position)
     if position in whiteSquares:
-        inputArray.append(1)
+        inputQueue.put(1)
     else:
-        inputArray.append(0)
+        inputQueue.put(0)
 
 
 painting = True
+t = Thread(target=brain.run)
+t.start()
 
-while not brain.hasFinished:
-    output = brain.step()
-    if output != None and painting:
-        paint(output)
-        painting = False
-    elif output != None and not painting:
-        walk(output)
-        painting = True
+inputQueue.put(1)
+while t.is_alive():
+    paint(outputQueue.get())
+    walk(outputQueue.get())
+
+t.join()
 
 for y in range(7):
     line = ""

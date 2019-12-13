@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import sys
+import queue
 
 class IntcodeMachine:
     instructions = {}
     program = []
-    input = []
     instPoint = 0
     lastIndex = 0
     relativeBase = 0
@@ -13,7 +13,9 @@ class IntcodeMachine:
         self.program = program
         self.instPoint = 0
         self.lastIndex = len(program)-1
-        relativeBase = 0
+        self.relativeBase = 0
+        self.outputQueue = queue.Queue()
+        self.inputQueue = queue.Queue()
         self.hasFinished = False
         self.instructions = { 
                 1: self.addCode,
@@ -78,7 +80,7 @@ class IntcodeMachine:
     # 03
     def inputCode(self):
         indices = self.getParamIndices(1,True)
-        value = int(self.input.pop(0))
+        value = int(self.inputQueue.get())
         self.program[indices[0]] = value
         self.instPoint+=2
 
@@ -86,7 +88,7 @@ class IntcodeMachine:
     def outputCode(self):
         indices = self.getParamIndices(1,False)
         self.instPoint+=2
-        return self.program[indices[0]]
+        self.outputQueue.put(self.program[indices[0]])
 
     # 05
     def jumpIfTrueCode(self):
@@ -140,14 +142,7 @@ class IntcodeMachine:
         operation = self.instructions[self.program[self.instPoint] % 100]
         return operation()
 
-    def setInput(self, input: []):
-        self.input = input
-
-    def run(self) -> [int]:
-        result = []
+    def run(self):
         while not self.hasFinished:
-            output = self.step()
-            if output != None:
-                result.append(output)
+            self.step()
 
-        return result
